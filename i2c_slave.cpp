@@ -1,10 +1,14 @@
 #include "pxt.h"
 #include "NRF52TWIS.h"
 
+// These two lines are necessary for the compiler to find CODAL objects and PXT interfaces.
+using namespace pxt;
+using namespace codal;
+
 // Hardware driver for BBC micro:bit v2 (nRF52 CODAL architecture)
 namespace i2c_slave {
     static NRF52TWIS* slaveI2C = nullptr;
-    static Action handlerAction;
+    static Action handlerAction = nullptr;
     static uint8_t rxBuffer[64];
     static int rxLength = 0;
 
@@ -14,7 +18,7 @@ namespace i2c_slave {
      */
     //%
     void initSlaveCPP(int sclPin, int sdaPin, int addr) {
-        // Retrieve pointers to NRF52Pin objects from MakeCode pin IDs
+        // Retrieving pointers from MakeCode and safely casting them for CODAL
         NRF52Pin* scl = (NRF52Pin*)getPin(sclPin);
         NRF52Pin* sda = (NRF52Pin*)getPin(sdaPin);
 
@@ -35,6 +39,10 @@ namespace i2c_slave {
      */
     //%
     void registerHandler(Action body) {
+        // Proper Memory Management in MakeCode (Garbage Collector)
+        if (handlerAction != nullptr) {
+            pxt::decr(handlerAction);
+        }
         pxt::incr(body);
         handlerAction = body;
     }
