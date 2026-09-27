@@ -1,16 +1,13 @@
 {
     "name": "I2C Slave",
-    "description": "",
+    "description": "Hardware-level I2C Slave extension for BBC micro:bit v2 (processor nRF52 with CODAL operation system). Allows micro:bit v2 to act as an I2C Slave device on customizable GPIO pins.",
     "dependencies": {
-        "core": "*",
-        "radio": "*",
-        "microphone": "*"
+        "core": "*"
     },
     "files": [
-        "main.blocks",
         "main.ts",
         "README.md",
-        "i2c_slave.cpp.ts"
+        "i2c_slave.cpp"
     ],
     "testFiles": [
         "test.ts"
