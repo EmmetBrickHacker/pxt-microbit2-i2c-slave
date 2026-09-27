@@ -13,32 +13,34 @@ namespace i2c_slave {
     //%
     void initSlaveCPP(int sclPin, int sdaPin, int addr) {
         // Retrieve internal pin objects safely
-        auto scl = getPin(sclPin);
-        auto sda = getPin(sdaPin);
+        auto scl = pxt::getPin(sclPin);
+        auto sda = pxt::getPin(sdaPin);
         if (!scl || !sda) return;
 
         // 1. Disable TWIS peripheral before configuration
-        NRF_TWIS1->ENABLE = 0;
+        // We use NRF_TWIS0 to avoid conflict with external I2C Master (which strictly uses TWI1)
+        NRF_TWIS0->ENABLE = 0;
 
         // 2. Map GPIO pins directly to the hardware peripheral
-        NRF_TWIS1->PSEL.SCL = scl->name;
-        NRF_TWIS1->PSEL.SDA = sda->name;
+        // Fixed CMSIS register naming: PSELSCL and PSELSDA
+        NRF_TWIS0->PSELSCL = scl->name;
+        NRF_TWIS0->PSELSDA = sda->name;
 
         // 3. Set the 7-bit slave address
-        NRF_TWIS1->ADDRESS[0] = addr;
-        NRF_TWIS1->CONFIG = 1; // Enable listening on ADDRESS[0]
-        NRF_TWIS1->ORC = 0x00; // Over-read character (sent if Master reads too much)
+        NRF_TWIS0->ADDRESS[0] = addr;
+        NRF_TWIS0->CONFIG = 1; // Enable listening on ADDRESS[0]
+        NRF_TWIS0->ORC = 0x00; // Over-read character (sent if Master reads too much)
 
         // 4. Assign the RX memory buffer using internal EasyDMA
-        NRF_TWIS1->RXD.PTR = (uint32_t)rxBuffer;
-        NRF_TWIS1->RXD.MAXCNT = sizeof(rxBuffer);
+        NRF_TWIS0->RXD.PTR = (uint32_t)rxBuffer;
+        NRF_TWIS0->RXD.MAXCNT = sizeof(rxBuffer);
 
         // 5. Enable the TWIS peripheral (value 6 = TWIS Enabled)
-        NRF_TWIS1->ENABLE = 6;
+        NRF_TWIS0->ENABLE = 6;
 
         // 6. Clear state flags and prepare EasyDMA for the first incoming packet
-        NRF_TWIS1->EVENTS_STOPPED = 0;
-        NRF_TWIS1->TASKS_PREPARERX = 1;
+        NRF_TWIS0->EVENTS_STOPPED = 0;
+        NRF_TWIS0->TASKS_PREPARERX = 1;
     }
 
     /**
@@ -60,11 +62,11 @@ namespace i2c_slave {
     //%
     void pollCPP() {
         // If a transaction has completed (STOP condition detected on the I2C bus)
-        if (NRF_TWIS1->EVENTS_STOPPED) {
-            NRF_TWIS1->EVENTS_STOPPED = 0;
+        if (NRF_TWIS0->EVENTS_STOPPED) {
+            NRF_TWIS0->EVENTS_STOPPED = 0;
 
             // Read how many bytes were actually received by DMA
-            rxLength = NRF_TWIS1->RXD.AMOUNT;
+            rxLength = NRF_TWIS0->RXD.AMOUNT;
 
             // Fire the TypeScript event if data exists and handler is bound
             if (rxLength > 0 && handlerAction != 0) {
@@ -72,7 +74,7 @@ namespace i2c_slave {
             }
 
             // Prepare DMA memory for the next incoming packet
-            NRF_TWIS1->TASKS_PREPARERX = 1;
+            NRF_TWIS0->TASKS_PREPARERX = 1;
         }
     }
 
