@@ -1,8 +1,5 @@
-
-> Open this page at [https://brickhackers.github.io/pxt-microbit2-i2c-slave/](https://brickhackers.github.io/pxt-microbit2-i2c-slave/)
-
-
 # micro:bit v2 I2C Slave Extension (`pxt-microbit2-i2c-slave`)
+> Open this page at [https://brickhackers.github.io/pxt-microbit2-i2c-slave/](https://brickhackers.github.io/pxt-microbit2-i2c-slave/)
 
 This MakeCode extension enables hardware **I2C Slave** mode on the **BBC micro:bit v2** using custom GPIO pins.
 
