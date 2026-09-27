@@ -14,9 +14,24 @@ namespace i2c_slave {
         P12 = DigitalPin.P12
     }
 
+    let isPolling = false;
+
+    // C++ function shims
+    //% shim=i2c_slave::initSlaveCPP
+    function initSlaveCPP(scl: number, sda: number, addr: number): void { }
+
+    //% shim=i2c_slave::registerHandler
+    function registerHandler(a: () => void): void { }
+
+    //% shim=i2c_slave::pollCPP
+    function pollCPP(): void { }
+
+    //% shim=i2c_slave::getBufferCPP
+    function getBufferCPP(): Buffer { return pins.createBuffer(0) }
+
     /**
      * Initialize I2C Slave receiver on micro:bit v2.
-     * Note: Supported on micro:bit v2 (nRF52 CODAL) only.
+     * Note: Supported on micro:bit v2 (nRF52) only.
      * @param scl Clock line pin for I2C Slave
      * @param sda Data line pin for I2C Slave
      * @param addr 7-bit target I2C address (default: 16 / 0x10)
@@ -25,7 +40,19 @@ namespace i2c_slave {
     //% scl.defl=i2c_slave.SlavePins.P1 sda.defl=i2c_slave.SlavePins.P2 addr.defl=16
     //% weight=100
     export function startSlave(scl: SlavePins, sda: SlavePins, addr: number): void {
-        initSlaveCPP(scl, sda, addr)
+        initSlaveCPP(scl, sda, addr);
+
+        // Start a background thread to poll the hardware registers safely.
+        // This avoids interrupt context issues in CODAL.
+        if (!isPolling) {
+            isPolling = true;
+            control.inBackground(function () {
+                while (true) {
+                    pollCPP();
+                    basic.pause(5); // 5 ms interval is fast enough for EV3 packets
+                }
+            })
+        }
     }
 
     /**
@@ -34,7 +61,7 @@ namespace i2c_slave {
     //% block="on I2C data received"
     //% weight=90
     export function onDataReceived(handler: () => void): void {
-        registerHandler(handler)
+        registerHandler(handler);
     }
 
     /**
@@ -43,6 +70,6 @@ namespace i2c_slave {
     //% block="received buffer"
     //% weight=80
     export function getReceivedBuffer(): Buffer {
-        return getBufferCPP()
+        return getBufferCPP();
     }
 }
