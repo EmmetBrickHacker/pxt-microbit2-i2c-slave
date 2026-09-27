@@ -31,7 +31,7 @@ namespace i2c_slave {
      */
     //%
     void registerHandler(Action body) {
-        pxt:: incr(body);
+        pxt::incr(body);
         handlerAction = body;
     }
 
@@ -40,7 +40,7 @@ namespace i2c_slave {
      */
     //%
     Buffer getBufferCPP() {
-        if (rxLength <= 0) return pxt:: mkBuffer(NULL, 0);
+        if (rxLength <= 0) return pxt::mkBuffer(NULL, 0);
         return pxt:: mkBuffer(rxBuffer, rxLength);
     }
 }
