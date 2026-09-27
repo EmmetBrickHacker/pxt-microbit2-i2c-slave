@@ -2,23 +2,26 @@
 declare namespace i2c_slave {
 
     /**
-     * Initialize the hardware NRF52 TWIS (Two-Wire Interface Slave) peripheral.
-     * Maps custom SCL and SDA pins and sets the 7-bit I2C Slave address.
+     * Initialize hardware TWIS directly via nRF52 registers (bypassing CODAL).
      */
     //% shim=i2c_slave::initSlaveCPP
     function initSlaveCPP(sclPin: int32, sdaPin: int32, addr: int32): void;
 
     /**
-     * Register an event callback handler in TypeScript when data arrives.
+     * Store the TypeScript callback function pointer.
      */
     //% shim=i2c_slave::registerHandler
     function registerHandler(body: () => void): void;
 
+    /**
+     * Polled from a TypeScript background thread to check for new data.
+     * Prevents interrupt priority crashes in MakeCode.
+     */
     //% shim=i2c_slave::pollCPP
     function pollCPP(): void;
 
     /**
-     * Fetch the received byte buffer.
+     * Return the populated buffer to MakeCode.
      */
     //% shim=i2c_slave::getBufferCPP
     function getBufferCPP(): Buffer;
