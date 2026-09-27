@@ -14,6 +14,9 @@ declare namespace i2c_slave {
     //% shim=i2c_slave::registerHandler
     function registerHandler(body: () => void): void;
 
+    //% shim=i2c_slave::pollCPP
+    function pollCPP(): void;
+
     /**
      * Fetch the received byte buffer.
      */
