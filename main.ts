@@ -14,22 +14,6 @@ namespace i2c_slave {
         P12 = DigitalPin.P12
     }
 
-    // C++ function shims
-    //% shim=i2c_slave::initSlaveCPP
-    function initSlaveCPP(scl: number, sda: number, addr: number): void {
-        return
-    }
-
-    //% shim=i2c_slave::registerHandler
-    function registerHandler(a: () => void): void {
-        return
-    }
-
-    //% shim=i2c_slave::getBufferCPP
-    function getBufferCPP(): Buffer {
-        return pins.createBuffer(0)
-    }
-
     /**
      * Initialize I2C Slave receiver on micro:bit v2.
      * Note: Supported on micro:bit v2 (nRF52 CODAL) only.
@@ -61,6 +45,4 @@ namespace i2c_slave {
     export function getReceivedBuffer(): Buffer {
         return getBufferCPP()
     }
-}basic.forever(function () {
-	
-})
+}
