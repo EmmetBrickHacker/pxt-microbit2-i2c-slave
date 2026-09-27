@@ -1,46 +1,52 @@
 #include "pxt.h"
-#include "NRF52TWIS.h"
 
-// These two lines are necessary for the compiler to find CODAL objects and PXT interfaces.
 using namespace pxt;
-using namespace codal;
 
-// Hardware driver for BBC micro:bit v2 (nRF52 CODAL architecture)
 namespace i2c_slave {
-    static NRF52TWIS* slaveI2C = nullptr;
-    static Action handlerAction = nullptr;
     static uint8_t rxBuffer[64];
     static int rxLength = 0;
+    static Action handlerAction = 0;
 
     /**
-     * Initialize the hardware NRF52 TWIS (Two-Wire Interface Slave) peripheral.
-     * Maps custom SCL and SDA pins and sets the 7-bit I2C Slave address.
+     * Initialize hardware TWIS directly via nRF52 registers (bypassing CODAL).
      */
     //%
     void initSlaveCPP(int sclPin, int sdaPin, int addr) {
-        // Retrieving pointers from MakeCode and safely casting them for CODAL
-        NRF52Pin* scl = (NRF52Pin*)getPin(sclPin);
-        NRF52Pin* sda = (NRF52Pin*)getPin(sdaPin);
+        // Retrieve internal pin objects safely
+        auto scl = getPin(sclPin);
+        auto sda = getPin(sdaPin);
+        if (!scl || !sda) return;
 
-        if (scl == nullptr || sda == nullptr) return;
+        // 1. Disable TWIS peripheral before configuration
+        NRF_TWIS1->ENABLE = 0;
 
-        // Clean up previous instance if already allocated
-        if (slaveI2C != nullptr) {
-            delete slaveI2C;
-            slaveI2C = nullptr;
-        }
+        // 2. Map GPIO pins directly to the hardware peripheral
+        NRF_TWIS1->PSEL.SCL = scl->name;
+        NRF_TWIS1->PSEL.SDA = sda->name;
 
-        // Instantiate hardware I2C Slave on nRF52833 using CODAL pin references
-        slaveI2C = new NRF52TWIS(*scl, *sda, (uint16_t)addr);
+        // 3. Set the 7-bit slave address
+        NRF_TWIS1->ADDRESS[0] = addr;
+        NRF_TWIS1->CONFIG = 1; // Enable listening on ADDRESS[0]
+        NRF_TWIS1->ORC = 0x00; // Over-read character (sent if Master reads too much)
+
+        // 4. Assign the RX memory buffer using internal EasyDMA
+        NRF_TWIS1->RXD.PTR = (uint32_t)rxBuffer;
+        NRF_TWIS1->RXD.MAXCNT = sizeof(rxBuffer);
+
+        // 5. Enable the TWIS peripheral (value 6 = TWIS Enabled)
+        NRF_TWIS1->ENABLE = 6;
+
+        // 6. Clear state flags and prepare EasyDMA for the first incoming packet
+        NRF_TWIS1->EVENTS_STOPPED = 0;
+        NRF_TWIS1->TASKS_PREPARERX = 1;
     }
 
     /**
-     * Register an event callback handler in TypeScript when data arrives.
+     * Store the TypeScript callback function pointer.
      */
     //%
     void registerHandler(Action body) {
-        // Proper Memory Management in MakeCode (Garbage Collector)
-        if (handlerAction != nullptr) {
+        if (handlerAction != 0) {
             pxt::decr(handlerAction);
         }
         pxt::incr(body);
@@ -48,7 +54,30 @@ namespace i2c_slave {
     }
 
     /**
-     * Fetch the received byte buffer.
+     * Polled from a TypeScript background thread to check for new data.
+     * Prevents interrupt priority crashes in MakeCode.
+     */
+    //%
+    void pollCPP() {
+        // If a transaction has completed (STOP condition detected on the I2C bus)
+        if (NRF_TWIS1->EVENTS_STOPPED) {
+            NRF_TWIS1->EVENTS_STOPPED = 0;
+
+            // Read how many bytes were actually received by DMA
+            rxLength = NRF_TWIS1->RXD.AMOUNT;
+
+            // Fire the TypeScript event if data exists and handler is bound
+            if (rxLength > 0 && handlerAction != 0) {
+                pxt::runAction0(handlerAction);
+            }
+
+            // Prepare DMA memory for the next incoming packet
+            NRF_TWIS1->TASKS_PREPARERX = 1;
+        }
+    }
+
+    /**
+     * Return the populated buffer to MakeCode.
      */
     //%
     Buffer getBufferCPP() {
