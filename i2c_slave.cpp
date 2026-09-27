@@ -1,9 +1,9 @@
 #include "pxt.h"
-#include "codal-microbit-v2/inc/NRF52TWIS.h"
+#include "NRF52TWIS.h"
 
 // Hardware driver for BBC micro:bit v2 (nRF52 CODAL architecture)
 namespace i2c_slave {
-    static NRF52TWIS * slaveI2C = nullptr;
+    static NRF52TWIS* slaveI2C = nullptr;
     static Action handlerAction;
     static uint8_t rxBuffer[64];
     static int rxLength = 0;
@@ -14,20 +14,24 @@ namespace i2c_slave {
      */
     //%
     void initSlaveCPP(int sclPin, int sdaPin, int addr) {
-        PinName scl = (PinName)getPin(sclPin) -> name;
-        PinName sda = (PinName)getPin(sdaPin) -> name;
+        // Retrieve pointers to NRF52Pin objects from MakeCode pin IDs
+        NRF52Pin* scl = (NRF52Pin*)getPin(sclPin);
+        NRF52Pin* sda = (NRF52Pin*)getPin(sdaPin);
+
+        if (scl == nullptr || sda == nullptr) return;
 
         // Clean up previous instance if already allocated
         if (slaveI2C != nullptr) {
             delete slaveI2C;
+            slaveI2C = nullptr;
         }
 
-        // Instantiate hardware I2C Slave on nRF52833
-        slaveI2C = new NRF52TWIS((uint8_t)addr, scl, sda);
+        // Instantiate hardware I2C Slave on nRF52833 using CODAL pin references
+        slaveI2C = new NRF52TWIS(*scl, *sda, (uint16_t)addr);
     }
 
     /**
-     * Register a event callback handler in TypeScript when data arrives.
+     * Register an event callback handler in TypeScript when data arrives.
      */
     //%
     void registerHandler(Action body) {
@@ -41,6 +45,6 @@ namespace i2c_slave {
     //%
     Buffer getBufferCPP() {
         if (rxLength <= 0) return pxt::mkBuffer(NULL, 0);
-        return pxt:: mkBuffer(rxBuffer, rxLength);
+        return pxt::mkBuffer(rxBuffer, rxLength);
     }
 }
